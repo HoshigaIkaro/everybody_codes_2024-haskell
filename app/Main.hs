@@ -7,5 +7,5 @@ main :: IO ()
 main = do
   args <- getArgs
   if length args == 0
-    then runQuest 3
+    then runQuest 4
     else runQuest $ read $ args !! 0
