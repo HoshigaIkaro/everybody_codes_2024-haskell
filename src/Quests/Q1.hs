@@ -4,7 +4,7 @@ import Data.Text qualified as T
 
 run :: IO ()
 run = do
-    let prefix = "./input/q1"
+    let prefix = "./input/q1/"
         firstInputName = prefix <> "p1.txt"
         secondInputName = prefix <> "p2.txt"
         thirdInputName = prefix <> "p3.txt"

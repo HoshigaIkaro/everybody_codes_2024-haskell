@@ -65,6 +65,7 @@ library
         Quests.Q1
         Quests.Q2
         Quests.Q3
+        Quests.Q4
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -78,7 +79,7 @@ library
     -- Base language which the package is written in.
     default-language: GHC2024
 
-executable haskell-solution-2024
+executable cli
     -- Import common warning flags.
     import:           warnings
 
@@ -102,7 +103,7 @@ executable haskell-solution-2024
     -- Base language which the package is written in.
     default-language: GHC2024
 
-test-suite haskell-solution-2024-test
+test-suite haskell-solution-test
     -- Import common warning flags.
     import:           warnings
 
