@@ -43,7 +43,7 @@ adjacentPointsV1 (row, col) =
     ]
 
 safe :: Set Point -> (Point -> [Point]) -> Point -> Bool
-safe board adjacent = all (flip S.member board) . adjacent
+safe board adjacent = all (`S.member` board) . adjacent
 
 runRemoveV1 :: Set Point -> Int
 runRemoveV1 board

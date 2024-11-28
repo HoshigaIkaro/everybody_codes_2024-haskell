@@ -8,6 +8,7 @@ import Quests.Q2 qualified as Q2
 import Quests.Q3 qualified as Q3
 import Quests.Q4 qualified as Q4
 import Quests.Q5 qualified as Q5
+import Quests.Q6 qualified as Q6
 
 import Control.Monad (void)
 
@@ -18,6 +19,8 @@ runQuest quest =
         2 -> Q2.run
         3 -> Q3.run
         4 -> Q4.run
+        5 -> Q5.run
+        6 -> Q6.run
         _ -> do
             let prefix = "./input/q"
                 firstInputName = prefix <> show quest <> "/p1.txt"
@@ -27,6 +30,7 @@ runQuest quest =
             firstInput <- trim <$> readFile firstInputName
             secondInput <- trim <$> readFile secondInputName
             thirdInput <- trim <$> readFile thirdInputName
-            print $ Q5.part1 firstInput
-            print $ Q5.part2 secondInput
-            print $ Q5.part3 thirdInput
+            -- print $ Q6.part1 firstInput
+            -- print $ Q6.part2 secondInput
+            -- print $ Q6.part3 thirdInput
+            return ()
