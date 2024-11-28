@@ -68,12 +68,13 @@ library
         Quests.Q4
         Quests.Q5
         Quests.Q6
+        Quests.Q7
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.20.0.0, text, containers, mtl
+    build-depends:    base ^>=4.20.0.0, text, containers, mtl, parallel
 
     -- Directories containing source files.
     hs-source-dirs:   src
