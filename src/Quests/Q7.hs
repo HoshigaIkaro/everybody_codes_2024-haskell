@@ -6,7 +6,6 @@ where
 -- (run, part1, part2, part3)
 
 import Control.Arrow (second)
-import Control.Monad (void)
 import Control.Monad.State
 import Control.Parallel
 import Control.Parallel.Strategies
@@ -75,6 +74,19 @@ knightUpdatePower '+' = const succ
 knightUpdatePower '-' = const pred
 knightUpdatePower _ = updatePower
 
+nextStep :: [(Int -> Int)] -> State (Int, Int) Int
+nextStep [] = return 0
+nextStep (f : fs) = do
+    (current, total) <- get
+    let newVal = f current
+        newTotal = total + newVal
+    put (newVal, newTotal)
+    rest <- nextStep fs
+    return $ newVal + rest
+
+makeFuncs :: [(Char, Char)] -> [(Int -> Int)]
+makeFuncs = map (uncurry knightUpdatePower)
+
 processSegmentV2 :: [(Char, Char)] -> Int
 processSegmentV2 pairs = evalState (nextStep $ makeFuncs pairs) (10, 0)
 
@@ -96,13 +108,9 @@ part2 s = do
 type Point = (Int, Int)
 
 makeBoard :: String -> Map Point Char
-makeBoard = M.fromList . filter (flip elem "+-=S" . snd) . concatMap f . flip zip [0 ..] . lines
+makeBoard = M.fromList . concatMap (filter (flip elem "+-=S" . snd) . f) . flip zip [0 ..] . lines
   where
-    f (row, rowNum) =
-        zipWith
-            (curry (\(col, colNum) -> ((rowNum, colNum), col)))
-            row
-            [0 ..]
+    f (row, rowNum) = zipWith (\col colNum -> ((rowNum, colNum), col)) row [0 ..]
 
 adjacentPoints :: Point -> [Point]
 adjacentPoints (row, col) =
@@ -128,8 +136,16 @@ extractTrackGeneral board = board M.! (0, 1) : go (0, 0) (0, 1)
         newPoint = nextPoint previous current board
         newValue = board M.! newPoint
 
+create :: Int -> Int -> Int -> [String]
+create 0 0 0 = [""]
+create numAdd numSub numEq = a <> b <> c
+  where
+    a = if numAdd > 0 then map ('+' :) (create (pred numAdd) numSub numEq) else []
+    b = if numSub > 0 then map ('-' :) (create numAdd (pred numSub) numEq) else []
+    c = if numEq > 0 then map ('=' :) (create numAdd numSub (pred numEq)) else []
+
 allPermutations :: [String]
-allPermutations = permutations "+++++---==="
+allPermutations = create 5 3 3
 
 mergeTrackWithSegment :: [(Char, Char)] -> String
 mergeTrackWithSegment = foldr f ""
@@ -138,38 +154,14 @@ mergeTrackWithSegment = foldr f ""
     f ('_', _) acc = '_' : acc
     f (_, char) acc = char : acc
 
-findWinningSegments :: Int -> String -> Int -> [Int]
-findWinningSegments numLoops track rivalScore =
-    map (f . processSegment) $ S.toList $ S.fromList $ parMap rpar (mergeTrackWithSegment . zipped) allPermutations
+findNumWinningSegments :: String -> Int -> Int
+findNumWinningSegments track rivalScore = go allPermutations
   where
-    totalTrack = concat $ replicate numLoops track
-    zipped segment = zipToTrack totalTrack segment
-    -- findWinningSegments numLoops track rivalScore = parMap rpar (f . simulateSegmentForNumLoops numLoops track) allPermutations
+    zipSegment = zipToTrack track
     f score = if score > rivalScore then 1 else 0
-
-part3 :: String -> IO Int
-part3 s = do
-    track <- (extractTrackGeneral . makeBoard) <$> readFile "./input/q7/p3a.txt"
-    return $ go track
-  where
-    go track =
-        let numLoops = 11
-            (_, rivalSegment) = head . map extractGroups $ lines s
-            rivalScore = processSegmentV2 (zipToTrack track rivalSegment)
-         in pfold $ findWinningSegments numLoops track rivalScore
-
-nextStep :: [(Int -> Int)] -> State (Int, Int) Int
-nextStep [] = return 0
-nextStep (f : fs) = do
-    (current, total) <- get
-    let newVal = f current
-        newTotal = total + newVal
-    put (newVal, newTotal)
-    rest <- nextStep fs
-    return $ newVal + rest
-
-makeFuncs :: [(Char, Char)] -> [(Int -> Int)]
-makeFuncs = map (uncurry knightUpdatePower)
+    go :: [String] -> Int
+    go [] = 0
+    go ps = pfold (parMap rdeepseq (f . processSegmentV2 . zipSegment) (take 32 ps)) + go (drop 32 ps)
 
 pfold :: [Int] -> Int
 pfold [value] = value
@@ -179,3 +171,12 @@ pfold xs = (ys `par` zs) `pseq` (ys + zs)
     (ys', zs') = splitAt (len `div` 2) xs
     ys = pfold ys'
     zs = pfold zs'
+
+part3 :: String -> IO Int
+part3 s = do
+    track <- extractTrackGeneral . makeBoard <$> readFile "./input/q7/p3a.txt"
+    let numLoops = 11
+        extendedTrack = concat $ replicate numLoops track
+        (_, rivalSegment) = head . map extractGroups $ lines s
+        rivalScore = processSegmentV2 (zipToTrack extendedTrack rivalSegment)
+    return $ findNumWinningSegments extendedTrack rivalScore
