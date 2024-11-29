@@ -11,6 +11,7 @@ import Quests.Q5 qualified as Q5
 import Quests.Q6 qualified as Q6
 import Quests.Q7 qualified as Q7
 import Quests.Q8 qualified as Q8
+import Quests.Q9 qualified as Q9
 
 import Control.Monad (void)
 
@@ -24,6 +25,7 @@ runQuest quest =
         5 -> Q5.run
         6 -> Q6.run
         7 -> Q7.run
+        8 -> Q8.run
         _ -> do
             let prefix = "./input/q"
                 firstInputName = prefix <> show quest <> "/p1.txt"
