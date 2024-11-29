@@ -13,7 +13,6 @@ import Data.Function (on)
 import Data.List
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Set qualified as S
 import Data.Text qualified as T
 
 run :: IO ()
@@ -22,7 +21,7 @@ run = do
         firstInputName = prefix <> "/p1.txt"
         secondInputName = prefix <> "/p2.txt"
         thirdInputName = prefix <> "/p3.txt"
-        trim = (T.unpack . T.strip . T.pack)
+        trim = T.unpack . T.strip . T.pack
     firstInput <- trim <$> readFile firstInputName
     secondInput <- trim <$> readFile secondInputName
     thirdInput <- trim <$> readFile thirdInputName
@@ -41,7 +40,7 @@ extractGroups :: String -> (String, String)
 extractGroups s = (label, segment)
   where
     splitted = T.split (== ':') $ T.pack s
-    label = T.unpack $ splitted !! 0
+    label = T.unpack $ head splitted
     segment = T.unpack $ T.filter (/= ',') $ splitted !! 1
 
 extendSegmentsTo :: Int -> String -> String
@@ -55,12 +54,12 @@ processSegment = snd . foldr f (10, 0) . reverse
          in (newValue, total + newValue)
 
 part1 :: String -> String
-part1 = concatMap (fst) . reverse . sortBy (compare `on` (processSegment . snd)) . map (second (extendSegmentsTo 10) . extractGroups) . lines
+part1 = concatMap fst . sortBy (flip compare `on` (processSegment . snd)) . map (second (extendSegmentsTo 10) . extractGroups) . lines
 
 -- part1 = map (second processSegment) . map (second (extendSegmentsTo 10) . extractGroups) . lines
 
 extractTrack :: String -> String
-extractTrack s = (drop 1 topTrack) <> rightMidTrack <> bottomTrack <> leftMidTrack <> "S"
+extractTrack s = drop 1 topTrack <> rightMidTrack <> bottomTrack <> leftMidTrack <> "S"
   where
     ls = lines s
     middleLines = init $ drop 1 ls
@@ -74,7 +73,7 @@ knightUpdatePower '+' = const succ
 knightUpdatePower '-' = const pred
 knightUpdatePower _ = updatePower
 
-nextStep :: [(Int -> Int)] -> State (Int, Int) Int
+nextStep :: [Int -> Int] -> State (Int, Int) Int
 nextStep [] = return 0
 nextStep (f : fs) = do
     (current, total) <- get
@@ -84,7 +83,7 @@ nextStep (f : fs) = do
     rest <- nextStep fs
     return $ newVal + rest
 
-makeFuncs :: [(Char, Char)] -> [(Int -> Int)]
+makeFuncs :: [(Char, Char)] -> [Int -> Int]
 makeFuncs = map (uncurry knightUpdatePower)
 
 processSegmentV2 :: [(Char, Char)] -> Int
@@ -100,9 +99,8 @@ part2 s = do
 
     return
         $ concatMap
-            (fst)
-            . reverse
-            . sortBy (compare `on` (processSegmentV2 . snd))
+            fst
+            . sortBy (flip compare `on` (processSegmentV2 . snd))
             . map (second (zipToTrack extendedTrack) . extractGroups)
         $ lines s
 type Point = (Int, Int)

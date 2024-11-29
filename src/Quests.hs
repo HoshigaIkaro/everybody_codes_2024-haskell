@@ -10,6 +10,7 @@ import Quests.Q4 qualified as Q4
 import Quests.Q5 qualified as Q5
 import Quests.Q6 qualified as Q6
 import Quests.Q7 qualified as Q7
+import Quests.Q8 qualified as Q8
 
 import Control.Monad (void)
 
@@ -32,8 +33,8 @@ runQuest quest =
             firstInput <- trim <$> readFile firstInputName
             secondInput <- trim <$> readFile secondInputName
             thirdInput <- trim <$> readFile thirdInputName
-            print $ Q7.part1 firstInput
-            -- print $ Q7.part2 secondInput
-            -- print $ Q7.part3 thirdInput
+            print $ Q8.part1 firstInput
+            print $ Q8.part2 secondInput
+            print $ Q8.part3 thirdInput
 
 -- return ()
