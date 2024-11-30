@@ -35,8 +35,8 @@ runQuest quest =
             firstInput <- trim <$> readFile firstInputName
             secondInput <- trim <$> readFile secondInputName
             thirdInput <- trim <$> readFile thirdInputName
-            print $ Q8.part1 firstInput
-            print $ Q8.part2 secondInput
-            print $ Q8.part3 thirdInput
+            print $ Q9.part1 firstInput
+            print $ Q9.part2 secondInput
+            print $ Q9.part3 thirdInput
 
 -- return ()
