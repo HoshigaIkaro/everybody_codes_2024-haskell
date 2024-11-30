@@ -13,7 +13,8 @@ import Quests.Q7 qualified as Q7
 import Quests.Q8 qualified as Q8
 import Quests.Q9 qualified as Q9
 
-import Control.Monad (void)
+-- import Control.Monad (void)
+import qualified Quests.Q10 as Q10
 
 runQuest :: Int -> IO ()
 runQuest quest =
@@ -26,17 +27,20 @@ runQuest quest =
         6 -> Q6.run
         7 -> Q7.run
         8 -> Q8.run
+        9 -> Q9.run
         _ -> do
             let prefix = "./input/q"
                 firstInputName = prefix <> show quest <> "/p1.txt"
                 secondInputName = prefix <> show quest <> "/p2.txt"
                 thirdInputName = prefix <> show quest <> "/p3.txt"
-                trim = (T.unpack . T.strip . T.pack)
+                trim = T.unpack . T.strip . T.pack
             firstInput <- trim <$> readFile firstInputName
             secondInput <- trim <$> readFile secondInputName
             thirdInput <- trim <$> readFile thirdInputName
-            print $ Q9.part1 firstInput
-            print $ Q9.part2 secondInput
-            print $ Q9.part3 thirdInput
+            print $ Q10.part1 firstInput
+            print $ Q10.part2 secondInput
+            print $ Q10.part3 thirdInput
+            -- value <- Q10.part3 thirdInput
+            -- print value
 
 -- return ()
