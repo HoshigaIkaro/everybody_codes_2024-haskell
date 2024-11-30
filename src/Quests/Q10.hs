@@ -15,15 +15,19 @@ run :: IO ()
 run = mempty
 
 type Point = (Int, Int)
+type RowIndex = Int
+type ColIndex = Int
+type StartPoint = (Int, Int)
+
 data Board = Board
-    { boardMapping :: Map Point Char
-    , boardWidth :: Int
-    , boardHeight :: Int
+    { bmapping :: Map Point Char
+    , bwidth :: Int
+    , bheight :: Int
     }
     deriving (Eq)
 
 showBoard :: Board -> String
-showBoard = unlines . map (map snd . sort) . groupBy f . M.toList . boardMapping
+showBoard = unlines . map (map snd . sort) . groupBy f . M.toList . bmapping
   where
     f ((r1, _), _) ((r2, _), _) = r1 == r2
 
@@ -33,9 +37,9 @@ instance Show Board where
 makeBoard :: String -> Board
 makeBoard s =
     Board
-        { boardMapping = M.fromList . concatMap (uncurry processRow) $ zip [0 ..] ls
-        , boardWidth = width
-        , boardHeight = height
+        { bmapping = M.fromList . concatMap (uncurry processRow) $ zip [0 ..] ls
+        , bwidth = width
+        , bheight = height
         }
   where
     ls = lines s
@@ -43,28 +47,36 @@ makeBoard s =
     width = length $ head ls
     processRow rowNum = zipWith (curry (first (rowNum,))) [0 ..]
 
-getWithFilter :: (Char -> Bool) -> Map Point Char -> [Point] -> Maybe [Char]
-getWithFilter f mapping = fmap (filter f) . mapM (`M.lookup` mapping)
+getFiltering :: (Char -> Bool) -> Map Point Char -> [Point] -> Maybe [Char]
+getFiltering f mapping = fmap (filter f) . mapM (`M.lookup` mapping)
 
-getRow :: Int -> Int -> Board -> Maybe [Char]
+getRow :: ColIndex -> RowIndex -> Board -> Maybe [Char]
 getRow = getRowWithFilter isAlpha
 
-getRowWithFilter :: (Char -> Bool) -> Int -> Int -> Board -> Maybe [Char]
-getRowWithFilter f leftmostCol rowNum board = getWithFilter f (boardMapping board) [(rowNum, colNum) | colNum <- [leftmostCol .. leftmostCol + 7]]
+getRowWithFilter :: (Char -> Bool) -> ColIndex -> RowIndex -> Board -> Maybe [Char]
+getRowWithFilter filterFunc leftBound rowNum board =
+    getFiltering
+        filterFunc
+        (bmapping board)
+        [(rowNum, colNum) | colNum <- [leftBound .. leftBound + 7]]
 
-getColumn :: Int -> Int -> Board -> Maybe [Char]
+getColumn :: RowIndex -> ColIndex -> Board -> Maybe [Char]
 getColumn = getColWithFilter isAlpha
 
-getColWithFilter :: (Char -> Bool) -> Int -> Int -> Board -> Maybe [Char]
-getColWithFilter filterFunc topmostRow colNum board = getWithFilter filterFunc (boardMapping board) [(rowNum, colNum) | rowNum <- [topmostRow .. topmostRow + 7]]
+getColWithFilter :: (Char -> Bool) -> RowIndex -> ColIndex -> Board -> Maybe [Char]
+getColWithFilter filterFunc topBound colNum board =
+    getFiltering
+        filterFunc
+        (bmapping board)
+        [(rowNum, colNum) | rowNum <- [topBound .. topBound + 7]]
 
-emptyPoints :: Point -> Board -> [Point]
-emptyPoints (topmostRow, leftmostCol) = map fst . M.toList . M.filterWithKey f . boardMapping
+emptyPoints :: StartPoint -> Board -> [Point]
+emptyPoints (topmostRow, leftmostCol) = map fst . M.toList . M.filterWithKey f . bmapping
   where
     inbounds bound value = value > bound && value <= bound + 6
     f (row, col) char = char == '.' && inbounds topmostRow row && inbounds leftmostCol col
 
-updateCharAt :: Point -> Point -> Maybe Board -> Maybe Board
+updateCharAt :: StartPoint -> Point -> Maybe Board -> Maybe Board
 updateCharAt (topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
     board <- maybeBoard
     row <- getRow leftmostCol rowNum board
@@ -72,16 +84,16 @@ updateCharAt (topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
     (newChar, _) <- uncons $ row `intersect` col
     pure
         board
-            { boardMapping = M.insert point newChar (boardMapping board)
+            { bmapping = M.insert point newChar (bmapping board)
             }
 
 readRunic :: [Point] -> Board -> String
 readRunic points board = map (mapping M.!) (sort points)
   where
-    mapping = boardMapping board
+    mapping = bmapping board
 
 boardStringToRunic :: String -> String
-boardStringToRunic s = readRunic empty $ fromJust $ foldr (updateCharAt (0, 0)) (Just board) empty
+boardStringToRunic s = readRunic empty $ partialSolve (0, 0) empty board
   where
     board = makeBoard s
     empty = emptyPoints (0, 0) board
@@ -106,22 +118,22 @@ part2 =
         . T.splitOn "\n\n"
         . T.pack
 
-parseCombinedBoard :: String -> ([Point], Board)
+parseCombinedBoard :: String -> ([StartPoint], Board)
 parseCombinedBoard s = (allStartingPoints, board)
   where
     board = makeBoard s
     calcOverlapping = flip div 6 . subtract 2
-    numHorizontal = calcOverlapping $ boardWidth board
-    numVertical = calcOverlapping $ boardHeight board
+    numHorizontal = calcOverlapping $ bwidth board
+    numVertical = calcOverlapping $ bheight board
     allStartingPoints = [(rowNum * 6, colNum * 6) | rowNum <- [0 .. numVertical - 1], colNum <- [0 .. numHorizontal - 1]]
 
-partialSolve :: Point -> [Point] -> Board -> Board
+partialSolve :: StartPoint -> [Point] -> Board -> Board
 partialSolve _ [] board = board
 partialSolve startingPoint (p : ps) board = case updateCharAt startingPoint p (Just board) of
     Nothing -> partialSolve startingPoint ps board
     Just newBoard -> partialSolve startingPoint ps newBoard
 
-findQuestionInRowCol :: Point -> Point -> String -> String -> Point
+findQuestionInRowCol :: StartPoint -> Point -> String -> String -> Point
 findQuestionInRowCol (topmostRow, leftmostCol) (currentRow, currentCol) row col
     | '?' `elem` row = (currentRow, leftmostCol + correctOffset (offsetIn row))
     | otherwise = (topmostRow + correctOffset (offsetIn col), currentCol)
@@ -135,7 +147,7 @@ outerChars = liftA2 (<>) (take 2) (drop 6)
 innerChars :: String -> String
 innerChars = drop 2 . take 6
 
-updateCharAtWithUnknown :: Point -> Point -> Maybe Board -> Maybe Board
+updateCharAtWithUnknown :: StartPoint -> Point -> Maybe Board -> Maybe Board
 updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
     board <- maybeBoard
     -- let filterFunc = liftA2 (||) isAlpha (`elem` ['?', '.'])
@@ -155,19 +167,19 @@ updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) m
             else Nothing
     let nonQuestionString = filter (/= '?') (filter (`notElem` innerRow) outerRow) <> filter (`notElem` innerCol) outerCol
     let newChar = head nonQuestionString
-        withNonEmptyInsert = M.insert point newChar (boardMapping board)
+        withNonEmptyInsert = M.insert point newChar (bmapping board)
         newMapping = M.insert questionPoint newChar withNonEmptyInsert
     pure
         board
-            { boardMapping = newMapping
+            { bmapping = newMapping
             }
 
-maybeCompleteSolve :: Point -> Board -> Maybe Board
+maybeCompleteSolve :: StartPoint -> Board -> Maybe Board
 maybeCompleteSolve startingPoint board = do
     let points = emptyPoints startingPoint board
     foldr (updateCharAtWithUnknown startingPoint) (Just board) points
 
-runePositions :: Point -> [Point]
+runePositions :: StartPoint -> [Point]
 runePositions (topmostRow, leftmostCol) = do
     rowDelta <- [topmostRow + 2 .. topmostRow + 5]
     colDelta <- [leftmostCol + 2 .. leftmostCol + 5]
@@ -179,14 +191,14 @@ maybeSolve start board = maybeCompleteSolve start $ partialSolve start (runePosi
 -- positions = runePositions start
 -- f permutation = maybeCompleteSolve start $ partialSolve start permutation board
 
-processInOrder :: [Point] -> ([Point], Board) -> ([Point], Board)
+processInOrder :: [StartPoint] -> ([StartPoint], Board) -> ([StartPoint], Board)
 processInOrder [] result = result
 processInOrder (p : ps) (solvedStartingPoints, board) =
     case maybeSolve p board of
         Just newBoard -> processInOrder ps (p : solvedStartingPoints, newBoard)
         Nothing -> processInOrder ps (solvedStartingPoints, board)
 
-processComplete :: [Point] -> ([Point], Board) -> ([Point], Board)
+processComplete :: [StartPoint] -> ([StartPoint], Board) -> ([StartPoint], Board)
 processComplete [] result = result
 processComplete points initialState@(initialProcessed, initialBoard)
     | initialBoard == newBoard = (processedPoints, newBoard)
