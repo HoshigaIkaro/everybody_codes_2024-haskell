@@ -1,7 +1,6 @@
 module Quests.Q5 (run, part1, part2, part3) where
 
-import Control.Exception (assert)
-import Control.Monad (replicateM, void)
+import Control.Monad (replicateM)
 import Control.Monad.State
 import Data.List
 import Data.Map (Map)
