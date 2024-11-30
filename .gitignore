@@ -24,4 +24,4 @@ cabal.project.local~
 
 input/*
 .vscode/*
-./scratch*
+scratch/*

@@ -5,7 +5,7 @@ module Quests.Q10 (run, part1, part2, part3) where
 
 import Control.Arrow (Arrow (first))
 import Data.Char (isAlpha, ord)
-import Data.List (elemIndex, groupBy, intersect, sort, transpose, uncons, (\\))
+import Data.List (elemIndex, groupBy, intersect, permutations, sort, transpose, uncons, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
@@ -88,6 +88,17 @@ updateCharAt (topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
             { bMap = M.insert point newChar (bMap board)
             }
 
+updateCharAtV2 :: StartPoint -> Point -> Maybe Board -> Maybe Board
+updateCharAtV2 (topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
+    board <- maybeBoard
+    row <- filter (/= '?') . outerChars <$> getRowWithFilter (const True) leftmostCol rowNum board
+    col <- filter (/= '?') . outerChars <$> getColWithFilter (const True) topmostRow colNum board
+    (newChar, _) <- uncons $ row `intersect` col
+    pure
+        board
+            { bMap = M.insert point newChar (bMap board)
+            }
+
 readRunic :: [Point] -> Board -> String
 readRunic points board = map (mapping M.!) (sort points)
   where
@@ -148,6 +159,16 @@ outerChars = liftA2 (<>) (take 2) (drop 6)
 innerChars :: String -> String
 innerChars = drop 2 . take 6
 
+getMatchingChar :: String -> String -> Char
+getMatchingChar row col = head $ filter (/= '?') $ S.toList (outerSet S.\\ innerSet)
+  where
+    innerRow = innerChars row
+    innerCol = innerChars col
+    outerRow = outerChars row
+    outerCol = outerChars col
+    outerSet = S.fromList (outerRow <> outerCol)
+    innerSet = S.fromList (innerRow <> innerCol)
+
 updateCharAtWithUnknown :: StartPoint -> Point -> Maybe Board -> Maybe Board
 updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
     board <- maybeBoard
@@ -155,19 +176,15 @@ updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) m
     row <- getRowWithFilter (const True) leftmostCol rowNum board
     col <- getColWithFilter (const True) topmostRow colNum board
     let combined = row <> col
-        -- processed = filter ((== 1) . length) . group $ sort $ filter (/= '.') combined
-        outerRow = outerChars row
-        outerCol = outerChars col
-        innerRow = innerChars row
-        innerCol = innerChars col
+    -- processed = filter ((== 1) . length) . group $ sort $ filter (/= '.') combined
     -- _ <- if length processed /= 2 then Nothing else Just ()
     -- (nonQuestionString, _) <- uncons $ filter (/= "?") processed
     questionPoint <-
-        if '?' `elem` combined
+        if '?' `elem` combined && 1 == length (filter (== '?') combined)
             then Just $ findQuestionInRowCol start point row col
             else Nothing
-    let nonQuestionString = filter (/= '?') (filter (`notElem` innerRow) outerRow) <> filter (`notElem` innerCol) outerCol
-    let newChar = head nonQuestionString
+    -- let nonQuestionString = filter (/= '?') (filter (`notElem` innerRow) outerRow) <> filter (`notElem` innerCol) outerCol
+    let newChar = getMatchingChar row col
         withNonEmptyInsert = M.insert point newChar (bMap board)
         newMapping = M.insert questionPoint newChar withNonEmptyInsert
     pure
@@ -182,9 +199,9 @@ maybeCompleteSolve startingPoint board = do
 
 runePositions :: StartPoint -> [Point]
 runePositions (topmostRow, leftmostCol) = do
-    rowDelta <- [topmostRow + 2 .. topmostRow + 5]
-    colDelta <- [leftmostCol + 2 .. leftmostCol + 5]
-    pure (rowDelta, colDelta)
+    row <- [topmostRow + 2 .. topmostRow + 5]
+    col <- [leftmostCol + 2 .. leftmostCol + 5]
+    pure (row, col)
 
 maybeSolve :: Point -> Board -> Maybe Board
 maybeSolve start board = maybeCompleteSolve start $ partialSolve start (runePositions start) board
@@ -210,6 +227,5 @@ processComplete points initialState@(initialProcessed, initialBoard)
 part3 :: String -> Int
 part3 s = sum $ map (effectivePower . flip readRunic finalBoard . runePositions) finalStartingPoints
   where
-    -- part3 s = finalBoard
     (points, board) = parseCombinedBoard s
     (finalStartingPoints, finalBoard) = processComplete points ([], board)
