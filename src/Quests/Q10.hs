@@ -5,7 +5,7 @@ module Quests.Q10 (run, part1, part2, part3) where
 
 import Control.Arrow (Arrow (first))
 import Data.Char (isAlpha, ord)
-import Data.List (findIndex, group, groupBy, intersect, sort, transpose, uncons, (\\))
+import Data.List (elemIndex, groupBy, intersect, sort, transpose, uncons, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
@@ -22,6 +22,11 @@ data Board = Board
     }
     deriving (Eq)
 
+showBoard :: Board -> String
+showBoard = unlines . map (map snd . sort) . groupBy f . M.toList . boardMapping
+  where
+    f ((r1, _), _) ((r2, _), _) = r1 == r2
+
 instance Show Board where
     show = showBoard
 
@@ -36,16 +41,16 @@ makeBoard s =
     ls = lines s
     height = length ls
     width = length $ head ls
-    processRow rowNum = map (first (rowNum,)) . zip [0 ..]
+    processRow rowNum = zipWith (curry (first (rowNum,))) [0 ..]
 
 getWithFilter :: (Char -> Bool) -> Map Point Char -> [Point] -> Maybe [Char]
-getWithFilter filterFunc mapping = fmap (filter filterFunc) . sequence . map (flip M.lookup mapping)
+getWithFilter f mapping = fmap (filter f) . mapM (`M.lookup` mapping)
 
 getRow :: Int -> Int -> Board -> Maybe [Char]
 getRow = getRowWithFilter isAlpha
 
 getRowWithFilter :: (Char -> Bool) -> Int -> Int -> Board -> Maybe [Char]
-getRowWithFilter filterFunc leftmostCol rowNum board = getWithFilter filterFunc (boardMapping board) [(rowNum, colNum) | colNum <- [leftmostCol .. leftmostCol + 7]]
+getRowWithFilter f leftmostCol rowNum board = getWithFilter f (boardMapping board) [(rowNum, colNum) | colNum <- [leftmostCol .. leftmostCol + 7]]
 
 getColumn :: Int -> Int -> Board -> Maybe [Char]
 getColumn = getColWithFilter isAlpha
@@ -85,7 +90,7 @@ part1 :: String -> String
 part1 = boardStringToRunic
 
 basePower :: Char -> Int
-basePower = (subtract (ord 'A' - 1)) . ord
+basePower = subtract (ord 'A' - 1) . ord
 
 effectivePower :: String -> Int
 effectivePower = sum . zipWith (*) [1 ..] . map basePower
@@ -101,6 +106,15 @@ part2 =
         . T.splitOn "\n\n"
         . T.pack
 
+parseCombinedBoard :: String -> ([Point], Board)
+parseCombinedBoard s = (allStartingPoints, board)
+  where
+    board = makeBoard s
+    calcOverlapping = flip div 6 . subtract 2
+    numHorizontal = calcOverlapping $ boardWidth board
+    numVertical = calcOverlapping $ boardHeight board
+    allStartingPoints = [(rowNum * 6, colNum * 6) | rowNum <- [0 .. numVertical - 1], colNum <- [0 .. numHorizontal - 1]]
+
 partialSolve :: Point -> [Point] -> Board -> Board
 partialSolve _ [] board = board
 partialSolve startingPoint (p : ps) board = case updateCharAt startingPoint p (Just board) of
@@ -112,12 +126,8 @@ findQuestionInRowCol (topmostRow, leftmostCol) (currentRow, currentCol) row col
     | '?' `elem` row = (currentRow, leftmostCol + correctOffset (offsetIn row))
     | otherwise = (topmostRow + correctOffset (offsetIn col), currentCol)
   where
-    offsetIn = fromJust . findIndex (== '?')
+    offsetIn = fromJust . elemIndex '?'
     correctOffset = id
-
--- correctOffset offset
---     | offset > 2 = offset + 4
---     | otherwise = offset
 
 outerChars :: String -> String
 outerChars = liftA2 (<>) (take 2) (drop 6)
@@ -128,21 +138,22 @@ innerChars = drop 2 . take 6
 updateCharAtWithUnknown :: Point -> Point -> Maybe Board -> Maybe Board
 updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
     board <- maybeBoard
-    let filterFunc = liftA2 (||) isAlpha (`elem` ['?', '.'])
+    -- let filterFunc = liftA2 (||) isAlpha (`elem` ['?', '.'])
     row <- getRowWithFilter (const True) leftmostCol rowNum board
     col <- getColWithFilter (const True) topmostRow colNum board
     let combined = row <> col
+        -- processed = filter ((== 1) . length) . group $ sort $ filter (/= '.') combined
         outerRow = outerChars row
         outerCol = outerChars col
         innerRow = innerChars row
         innerCol = innerChars col
-        processed = filter ((== 1) . length) . group $ sort $ filter (/= '.') combined
     -- _ <- if length processed /= 2 then Nothing else Just ()
+    -- (nonQuestionString, _) <- uncons $ filter (/= "?") processed
     questionPoint <-
         if '?' `elem` combined
             then Just $ findQuestionInRowCol start point row col
             else Nothing
-    let nonQuestionString = filter (/= '?') (filter (`notElem` innerRow) outerRow) <> (filter (`notElem` innerCol) outerCol)
+    let nonQuestionString = filter (/= '?') (filter (`notElem` innerRow) outerRow) <> filter (`notElem` innerCol) outerCol
     let newChar = head nonQuestionString
         withNonEmptyInsert = M.insert point newChar (boardMapping board)
         newMapping = M.insert questionPoint newChar withNonEmptyInsert
@@ -154,28 +165,19 @@ updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) m
 maybeCompleteSolve :: Point -> Board -> Maybe Board
 maybeCompleteSolve startingPoint board = do
     let points = emptyPoints startingPoint board
-    newBoard <- foldr (updateCharAtWithUnknown startingPoint) (Just board) points
-    pure newBoard
+    foldr (updateCharAtWithUnknown startingPoint) (Just board) points
 
-showBoard :: Board -> String
-showBoard = unlines . map (map snd . sort) . groupBy f . M.toList . boardMapping
-  where
-    f ((r1, _), _) ((r2, _), _) = r1 == r2
-
-parseCombinedBoard :: String -> ([Point], Board)
-parseCombinedBoard s = (allStartingPoints, board)
-  where
-    board = makeBoard s
-    calcOverlapping = flip div 6 . subtract 2
-    numHorizontal = calcOverlapping $ boardWidth board
-    numVertical = calcOverlapping $ boardHeight board
-    allStartingPoints = [(rowNum * 6, colNum * 6) | rowNum <- [0 .. numVertical - 1], colNum <- [0 .. numHorizontal - 1]]
+runePositions :: Point -> [Point]
+runePositions (topmostRow, leftmostCol) = do
+    rowDelta <- [topmostRow + 2 .. topmostRow + 5]
+    colDelta <- [leftmostCol + 2 .. leftmostCol + 5]
+    pure (rowDelta, colDelta)
 
 maybeSolve :: Point -> Board -> Maybe Board
 maybeSolve start board = maybeCompleteSolve start $ partialSolve start (runePositions start) board
-  where
-    -- positions = runePositions start
-    -- f permutation = maybeCompleteSolve start $ partialSolve start permutation board
+
+-- positions = runePositions start
+-- f permutation = maybeCompleteSolve start $ partialSolve start permutation board
 
 processInOrder :: [Point] -> ([Point], Board) -> ([Point], Board)
 processInOrder [] result = result
@@ -183,12 +185,6 @@ processInOrder (p : ps) (solvedStartingPoints, board) =
     case maybeSolve p board of
         Just newBoard -> processInOrder ps (p : solvedStartingPoints, newBoard)
         Nothing -> processInOrder ps (solvedStartingPoints, board)
-
-runePositions :: Point -> [Point]
-runePositions (topmostRow, leftmostCol) = do
-    rowDelta <- [topmostRow + 2 .. topmostRow + 5]
-    colDelta <- [leftmostCol + 2 .. leftmostCol + 5]
-    pure (rowDelta, colDelta)
 
 processComplete :: [Point] -> ([Point], Board) -> ([Point], Board)
 processComplete [] result = result
@@ -200,7 +196,7 @@ processComplete points initialState@(initialProcessed, initialBoard)
 
 part3 :: String -> Int
 part3 s = sum $ map (effectivePower . flip readRunic finalBoard . runePositions) startingPoints
--- part3 s = finalBoard
   where
+    -- part3 s = finalBoard
     (points, board) = parseCombinedBoard s
     (startingPoints, finalBoard) = processComplete points ([], board)
