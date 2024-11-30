@@ -9,6 +9,7 @@ import Data.List (elemIndex, groupBy, intersect, sort, transpose, uncons, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
+import Data.Set qualified as S
 import Data.Text qualified as T
 
 run :: IO ()
@@ -20,14 +21,14 @@ type ColIndex = Int
 type StartPoint = (Int, Int)
 
 data Board = Board
-    { bmapping :: Map Point Char
+    { bMap :: Map Point Char
     , bwidth :: Int
     , bheight :: Int
     }
     deriving (Eq)
 
 showBoard :: Board -> String
-showBoard = unlines . map (map snd . sort) . groupBy f . M.toList . bmapping
+showBoard = unlines . map (map snd . sort) . groupBy f . M.toList . bMap
   where
     f ((r1, _), _) ((r2, _), _) = r1 == r2
 
@@ -37,7 +38,7 @@ instance Show Board where
 makeBoard :: String -> Board
 makeBoard s =
     Board
-        { bmapping = M.fromList . concatMap (uncurry processRow) $ zip [0 ..] ls
+        { bMap = M.fromList . concatMap (uncurry processRow) $ zip [0 ..] ls
         , bwidth = width
         , bheight = height
         }
@@ -57,7 +58,7 @@ getRowWithFilter :: (Char -> Bool) -> ColIndex -> RowIndex -> Board -> Maybe [Ch
 getRowWithFilter filterFunc leftBound rowNum board =
     getFiltering
         filterFunc
-        (bmapping board)
+        (bMap board)
         [(rowNum, colNum) | colNum <- [leftBound .. leftBound + 7]]
 
 getColumn :: RowIndex -> ColIndex -> Board -> Maybe [Char]
@@ -67,11 +68,11 @@ getColWithFilter :: (Char -> Bool) -> RowIndex -> ColIndex -> Board -> Maybe [Ch
 getColWithFilter filterFunc topBound colNum board =
     getFiltering
         filterFunc
-        (bmapping board)
+        (bMap board)
         [(rowNum, colNum) | rowNum <- [topBound .. topBound + 7]]
 
 emptyPoints :: StartPoint -> Board -> [Point]
-emptyPoints (topmostRow, leftmostCol) = map fst . M.toList . M.filterWithKey f . bmapping
+emptyPoints (topmostRow, leftmostCol) = map fst . M.toList . M.filterWithKey f . bMap
   where
     inbounds bound value = value > bound && value <= bound + 6
     f (row, col) char = char == '.' && inbounds topmostRow row && inbounds leftmostCol col
@@ -84,13 +85,13 @@ updateCharAt (topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
     (newChar, _) <- uncons $ row `intersect` col
     pure
         board
-            { bmapping = M.insert point newChar (bmapping board)
+            { bMap = M.insert point newChar (bMap board)
             }
 
 readRunic :: [Point] -> Board -> String
 readRunic points board = map (mapping M.!) (sort points)
   where
-    mapping = bmapping board
+    mapping = bMap board
 
 boardStringToRunic :: String -> String
 boardStringToRunic s = readRunic empty $ partialSolve (0, 0) empty board
@@ -167,11 +168,11 @@ updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) m
             else Nothing
     let nonQuestionString = filter (/= '?') (filter (`notElem` innerRow) outerRow) <> filter (`notElem` innerCol) outerCol
     let newChar = head nonQuestionString
-        withNonEmptyInsert = M.insert point newChar (bmapping board)
+        withNonEmptyInsert = M.insert point newChar (bMap board)
         newMapping = M.insert questionPoint newChar withNonEmptyInsert
     pure
         board
-            { bmapping = newMapping
+            { bMap = newMapping
             }
 
 maybeCompleteSolve :: StartPoint -> Board -> Maybe Board
@@ -207,8 +208,8 @@ processComplete points initialState@(initialProcessed, initialBoard)
     (processedPoints, newBoard) = processInOrder points initialState
 
 part3 :: String -> Int
-part3 s = sum $ map (effectivePower . flip readRunic finalBoard . runePositions) startingPoints
+part3 s = sum $ map (effectivePower . flip readRunic finalBoard . runePositions) finalStartingPoints
   where
     -- part3 s = finalBoard
     (points, board) = parseCombinedBoard s
-    (startingPoints, finalBoard) = processComplete points ([], board)
+    (finalStartingPoints, finalBoard) = processComplete points ([], board)
