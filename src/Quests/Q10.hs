@@ -5,7 +5,8 @@ module Quests.Q10 (run, part1, part2, part3) where
 
 import Control.Arrow (Arrow (first))
 import Data.Char (isAlpha, ord)
-import Data.List (elemIndex, groupBy, intersect, permutations, sort, transpose, uncons, (\\))
+import Data.Function (on)
+import Data.List (elemIndex, groupBy, intersect, maximumBy, permutations, sort, transpose, uncons, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
@@ -74,7 +75,7 @@ getColWithFilter filterFunc topBound colNum board =
 emptyPoints :: StartPoint -> Board -> [Point]
 emptyPoints (topmostRow, leftmostCol) = map fst . M.toList . M.filterWithKey f . bMap
   where
-    inbounds bound value = value > bound && value <= bound + 6
+    inbounds bound value = value > bound + 1 && value < bound + 6
     f (row, col) char = char == '.' && inbounds topmostRow row && inbounds leftmostCol col
 
 updateCharAt :: StartPoint -> Point -> Maybe Board -> Maybe Board
@@ -99,16 +100,17 @@ updateCharAtV2 (topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
             { bMap = M.insert point newChar (bMap board)
             }
 
-readRunic :: [Point] -> Board -> String
-readRunic points board = map (mapping M.!) (sort points)
+getRunic :: [Point] -> Board -> String
+getRunic points board = map (mapping M.!) (sort points)
   where
     mapping = bMap board
 
+-- | Solve standard block and produce the runic word
 boardStringToRunic :: String -> String
-boardStringToRunic s = readRunic empty $ partialSolve (0, 0) empty board
+boardStringToRunic s = getRunic points $ partialSolve (0, 0) points board
   where
     board = makeBoard s
-    empty = emptyPoints (0, 0) board
+    points = emptyPoints (0, 0) board
 
 part1 :: String -> String
 part1 = boardStringToRunic
@@ -139,6 +141,7 @@ parseCombinedBoard s = (allStartingPoints, board)
     numVertical = calcOverlapping $ bheight board
     allStartingPoints = [(rowNum * 6, colNum * 6) | rowNum <- [0 .. numVertical - 1], colNum <- [0 .. numHorizontal - 1]]
 
+-- | Solve all positions without considering '?'
 partialSolve :: StartPoint -> [Point] -> Board -> Board
 partialSolve _ [] board = board
 partialSolve startingPoint (p : ps) board = case updateCharAt startingPoint p (Just board) of
@@ -147,27 +150,16 @@ partialSolve startingPoint (p : ps) board = case updateCharAt startingPoint p (J
 
 findQuestionInRowCol :: StartPoint -> Point -> String -> String -> Point
 findQuestionInRowCol (topmostRow, leftmostCol) (currentRow, currentCol) row col
-    | '?' `elem` row = (currentRow, leftmostCol + correctOffset (offsetIn row))
-    | otherwise = (topmostRow + correctOffset (offsetIn col), currentCol)
+    | '?' `elem` row = (currentRow, leftmostCol + offsetIn row)
+    | otherwise = (topmostRow + offsetIn col, currentCol)
   where
     offsetIn = fromJust . elemIndex '?'
-    correctOffset = id
 
 outerChars :: String -> String
 outerChars = liftA2 (<>) (take 2) (drop 6)
 
 innerChars :: String -> String
 innerChars = drop 2 . take 6
-
-getMatchingChar :: String -> String -> Char
-getMatchingChar row col = head $ filter (/= '?') $ S.toList (outerSet S.\\ innerSet)
-  where
-    innerRow = innerChars row
-    innerCol = innerChars col
-    outerRow = outerChars row
-    outerCol = outerChars col
-    outerSet = S.fromList (outerRow <> outerCol)
-    innerSet = S.fromList (innerRow <> innerCol)
 
 updateCharAtWithUnknown :: StartPoint -> Point -> Maybe Board -> Maybe Board
 updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) maybeBoard = do
@@ -176,6 +168,13 @@ updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) m
     row <- getRowWithFilter (const True) leftmostCol rowNum board
     col <- getColWithFilter (const True) topmostRow colNum board
     let combined = row <> col
+        innerRow = innerChars row
+        innerCol = innerChars col
+        outerRow = outerChars row
+        outerCol = outerChars col
+        outerSet = S.fromList (outerRow <> outerCol)
+        innerSet = S.fromList (innerRow <> innerCol)
+    -- innerSet = S.fromList (map (\p -> (bMap board) M.! p) (runePositions start))
     -- processed = filter ((== 1) . length) . group $ sort $ filter (/= '.') combined
     -- _ <- if length processed /= 2 then Nothing else Just ()
     -- (nonQuestionString, _) <- uncons $ filter (/= "?") processed
@@ -184,7 +183,7 @@ updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) m
             then Just $ findQuestionInRowCol start point row col
             else Nothing
     -- let nonQuestionString = filter (/= '?') (filter (`notElem` innerRow) outerRow) <> filter (`notElem` innerCol) outerCol
-    let newChar = getMatchingChar row col
+    let newChar = head $ filter (/= '?') $ S.toList (outerSet S.\\ innerSet)
         withNonEmptyInsert = M.insert point newChar (bMap board)
         newMapping = M.insert questionPoint newChar withNonEmptyInsert
     pure
@@ -192,19 +191,22 @@ updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) m
             { bMap = newMapping
             }
 
-maybeCompleteSolve :: StartPoint -> Board -> Maybe Board
-maybeCompleteSolve startingPoint board = do
+-- | Try to completely solve a partially solved block
+maybeCompleteSolveAt :: StartPoint -> Board -> Maybe Board
+maybeCompleteSolveAt startingPoint board = do
     let points = emptyPoints startingPoint board
     foldr (updateCharAtWithUnknown startingPoint) (Just board) points
 
+-- | Get all rune positions given the top left character's position
 runePositions :: StartPoint -> [Point]
 runePositions (topmostRow, leftmostCol) = do
     row <- [topmostRow + 2 .. topmostRow + 5]
     col <- [leftmostCol + 2 .. leftmostCol + 5]
     pure (row, col)
 
+-- | Try to solve a block at the provided position in two passes
 maybeSolve :: Point -> Board -> Maybe Board
-maybeSolve start board = maybeCompleteSolve start $ partialSolve start (runePositions start) board
+maybeSolve start board = maybeCompleteSolveAt start $ partialSolve start (runePositions start) board
 
 -- positions = runePositions start
 -- f permutation = maybeCompleteSolve start $ partialSolve start permutation board
@@ -218,14 +220,18 @@ processInOrder (p : ps) (solvedStartingPoints, board) =
 
 processComplete :: [StartPoint] -> ([StartPoint], Board) -> ([StartPoint], Board)
 processComplete [] result = result
-processComplete points initialState@(initialProcessed, initialBoard)
+processComplete points initialState@(_, initialBoard)
     | initialBoard == newBoard = (processedPoints, newBoard)
-    | otherwise = processComplete (points \\ processedPoints) (initialProcessed <> processedPoints, newBoard)
+    | otherwise = processComplete (points \\ processedPoints) (processedPoints, newBoard)
   where
     (processedPoints, newBoard) = processInOrder points initialState
 
 part3 :: String -> Int
-part3 s = sum $ map (effectivePower . flip readRunic finalBoard . runePositions) finalStartingPoints
+part3 s = sum $ map (effectivePower . flip getRunic finalBoard . runePositions) finalPoints
   where
+    -- part3 s = finalBoard
+
     (points, board) = parseCombinedBoard s
-    (finalStartingPoints, finalBoard) = processComplete points ([], board)
+    -- ps = map (\i -> drop i points <> take i points) [0 .. length points - 1]
+    -- f startpoints = processComplete startpoints ([], board)
+    (finalPoints, finalBoard) = processComplete (reverse points) ([], board)
