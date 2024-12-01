@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-x-partial #-}
+
 module Quests.Q3 (run, part1, part2, part3) where
 
 import Data.Maybe (mapMaybe)
@@ -11,7 +13,7 @@ run = do
         firstInputName = prefix <> "p1.txt"
         secondInputName = prefix <> "p2.txt"
         thirdInputName = prefix <> "p3.txt"
-        trim = (T.unpack . T.strip . T.pack)
+        trim = T.unpack . T.strip . T.pack
     firstInput <- trim <$> readFile firstInputName
     secondInput <- trim <$> readFile secondInputName
     thirdInput <- trim <$> readFile thirdInputName
@@ -23,13 +25,13 @@ type Point = (Int, Int)
 type Size = (Int, Int)
 
 allPoints :: Size -> [Point]
-allPoints (height, width) = concatMap (\row -> map ((,) row) [0 .. width - 1]) [0 .. height - 1]
+allPoints (height, width) = concatMap (\row -> map (row,) [0 .. width - 1]) [0 .. height - 1]
 
 makeBoard :: [String] -> Set Point
 makeBoard original = S.fromList $ mapMaybe checkEarth $ zip (concat original) (allPoints (height, width))
   where
     height = length original
-    width = length $ original !! 0
+    width = length $ head original
     checkEarth :: (Char, Point) -> Maybe Point
     checkEarth ('#', point) = Just point
     checkEarth _ = Nothing

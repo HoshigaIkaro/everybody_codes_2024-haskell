@@ -10,7 +10,7 @@ run = do
         firstInputName = prefix <> "/p1.txt"
         secondInputName = prefix <> "/p2.txt"
         thirdInputName = prefix <> "/p3.txt"
-        trim = (T.unpack . T.strip . T.pack)
+        trim = T.unpack . T.strip . T.pack
     firstInput <- trim <$> readFile firstInputName
     secondInput <- trim <$> readFile secondInputName
     thirdInput <- trim <$> readFile thirdInputName

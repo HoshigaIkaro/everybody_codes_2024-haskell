@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-x-partial #-}
+
 module Quests.Q5 (run, part1, part2, part3) where
 
 import Control.Monad (replicateM)
@@ -13,7 +15,7 @@ run = do
       firstInputName = prefix <> "/p1.txt"
       secondInputName = prefix <> "/p2.txt"
       thirdInputName = prefix <> "/p3.txt"
-      trim = (T.unpack . T.strip . T.pack)
+      trim = T.unpack . T.strip . T.pack
   firstInput <- trim <$> readFile firstInputName
   secondInput <- trim <$> readFile secondInputName
   thirdInput <- trim <$> readFile thirdInputName
@@ -58,7 +60,7 @@ nextStep :: State BoardState Int
 nextStep = do
   (board, originalColumn) <- get
   let newRoundNumber = succ originalColumn `rem` length board
-      clapper = board !! originalColumn !! 0
+      clapper = head (board !! originalColumn)
       originalPosition = (0 :: Int, originalColumn)
       newPosition = findNewPosition board newRoundNumber clapper
       newBoard = insertAt newPosition clapper $ deleteAt originalPosition board
@@ -88,7 +90,7 @@ untilNumShouts n = go
   go = do
     (board, originalColumn, shouts) <- get
     let newRoundNumber = succ originalColumn `rem` length board
-        clapper = board !! originalColumn !! 0
+        clapper = head (board !! originalColumn)
         originalPosition = (0 :: Int, originalColumn)
         newPosition = findNewPosition board newRoundNumber clapper
         newBoard = insertAt newPosition clapper $ deleteAt originalPosition board

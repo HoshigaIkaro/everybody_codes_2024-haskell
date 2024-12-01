@@ -8,7 +8,7 @@ run = do
         firstInputName = prefix <> "p1.txt"
         secondInputName = prefix <> "p2.txt"
         thirdInputName = prefix <> "p3.txt"
-        trim = (T.unpack . T.strip . T.pack)
+        trim = T.unpack . T.strip . T.pack
     firstInput <- trim <$> readFile firstInputName
     secondInput <- trim <$> readFile secondInputName
     thirdInput <- trim <$> readFile thirdInputName
@@ -47,7 +47,7 @@ part3 = sum . map (creaturesToPotion . filter (/= 'x')) . chunksOf 3
   where
     creaturesToPotion [] = 0
     creaturesToPotion [a] = potionsV3 a - 2
-    creaturesToPotion creatures@[_, _] = (flip (-) 2) . sum $ map potionsV3 creatures
+    creaturesToPotion creatures@[_, _] = subtract 2 . sum $ map potionsV3 creatures
     creaturesToPotion creatures = sum $ map potionsV3 creatures
 
 potionsV3 :: Char -> Int

@@ -28,6 +28,7 @@ runQuest quest =
         7 -> Q7.run
         8 -> Q8.run
         9 -> Q9.run
+        10 -> Q10.run
         _ -> do
             let prefix = "./input/q"
                 firstInputName = prefix <> show quest <> "/p1.txt"
@@ -37,9 +38,9 @@ runQuest quest =
             firstInput <- trim <$> readFile firstInputName
             secondInput <- trim <$> readFile secondInputName
             thirdInput <- trim <$> readFile thirdInputName
-            print $ Q10.part1 firstInput
-            print $ Q10.part2 secondInput
-            print $ Q10.part3 thirdInput
+            print $ Q11.part1 firstInput
+            print $ Q11.part2 secondInput
+            print $ Q11.part3 thirdInput
             -- value <- Q10.part3 thirdInput
             -- print value
 

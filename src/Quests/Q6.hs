@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-x-partial #-}
 
 module Quests.Q6 (run, part1, part2, part3) where
 
@@ -18,7 +19,7 @@ run = do
         firstInputName = prefix <> "/p1.txt"
         secondInputName = prefix <> "/p2.txt"
         thirdInputName = prefix <> "/p3.txt"
-        trim = (T.strip . T.pack)
+        trim = T.strip . T.pack
     firstInput <- trim <$> readFile firstInputName
     secondInput <- trim <$> readFile secondInputName
     thirdInput <- trim <$> readFile thirdInputName
@@ -37,7 +38,7 @@ groupLineWith :: Text -> (Text, [Text])
 groupLineWith s = (node, children)
   where
     splitResult = T.split (== ':') s
-    node = splitResult !! 0
+    node = head splitResult
     children = T.split (== ',') $ splitResult !! 1
 
 parseInput :: ([Text] -> [(Text, [Text])]) -> Text -> Mapping
@@ -90,7 +91,7 @@ groupLineWithV2 :: Text -> Maybe (Text, [Text])
 groupLineWithV2 s = if isBugOrAnt node then Nothing else Just (node, children)
   where
     splitResult = T.split (== ':') s
-    node = splitResult !! 0
+    node = head splitResult
     children = filter (not . isBugOrAnt) . T.split (== ',') $ splitResult !! 1
 
 part3 :: Text -> Text
