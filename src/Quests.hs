@@ -12,9 +12,10 @@ import Quests.Q6 qualified as Q6
 import Quests.Q7 qualified as Q7
 import Quests.Q8 qualified as Q8
 import Quests.Q9 qualified as Q9
+import Quests.Q10 qualified as Q10
+import Quests.Q11 qualified as Q11
 
 -- import Control.Monad (void)
-import qualified Quests.Q10 as Q10
 
 runQuest :: Int -> IO ()
 runQuest quest =
@@ -41,7 +42,8 @@ runQuest quest =
             print $ Q11.part1 firstInput
             print $ Q11.part2 secondInput
             print $ Q11.part3 thirdInput
-            -- value <- Q10.part3 thirdInput
-            -- print value
+
+-- value <- Q10.part3 thirdInput
+-- print value
 
 -- return ()

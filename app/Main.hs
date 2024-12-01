@@ -9,5 +9,5 @@ main = do
   setNumCapabilities 32
   args <- getArgs
   if length args == 0
-    then runQuest 10
+    then runQuest 11
     else runQuest $ read $ args !! 0
