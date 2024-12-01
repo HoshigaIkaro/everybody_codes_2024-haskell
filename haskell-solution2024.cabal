@@ -76,6 +76,7 @@ library
         Quests.Q9
         Quests.Q10
         Quests.Q11
+        Quests.Q12
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
