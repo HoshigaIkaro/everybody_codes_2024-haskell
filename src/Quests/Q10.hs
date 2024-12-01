@@ -6,7 +6,7 @@ module Quests.Q10 (run, part1, part2, part3) where
 import Control.Arrow (Arrow (first))
 import Data.Char (isAlpha, ord)
 import Data.Function (on)
-import Data.List (elemIndex, groupBy, intersect, maximumBy, permutations, sort, transpose, uncons, (\\))
+import Data.List (elemIndex, group, groupBy, intersect, maximumBy, permutations, sort, transpose, uncons, (\\))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
@@ -29,7 +29,7 @@ data Board = Board
     deriving (Eq)
 
 showBoard :: Board -> String
-showBoard = unlines . map (map snd . sort) . groupBy f . M.toList . bMap
+showBoard = unlines . map (map snd) . groupBy f . sort . M.toList . bMap
   where
     f ((r1, _), _) ((r2, _), _) = r1 == r2
 
@@ -145,8 +145,8 @@ parseCombinedBoard s = (allStartingPoints, board)
 partialSolve :: StartPoint -> [Point] -> Board -> Board
 partialSolve _ [] board = board
 partialSolve startingPoint (p : ps) board = case updateCharAt startingPoint p (Just board) of
-    Nothing -> partialSolve startingPoint ps board
     Just newBoard -> partialSolve startingPoint ps newBoard
+    Nothing -> partialSolve startingPoint ps board
 
 findQuestionInRowCol :: StartPoint -> Point -> String -> String -> Point
 findQuestionInRowCol (topmostRow, leftmostCol) (currentRow, currentCol) row col
@@ -174,9 +174,9 @@ updateCharAtWithUnknown start@(topmostRow, leftmostCol) point@(rowNum, colNum) m
         outerCol = outerChars col
         outerSet = S.fromList (outerRow <> outerCol)
         innerSet = S.fromList (innerRow <> innerCol)
-    -- innerSet = S.fromList (map (\p -> (bMap board) M.! p) (runePositions start))
-    -- processed = filter ((== 1) . length) . group $ sort $ filter (/= '.') combined
-    -- _ <- if length processed /= 2 then Nothing else Just ()
+        -- innerSet = S.fromList (map (\p -> (bMap board) M.! p) (runePositions start))
+        processed = filter ((== 1) . length) . group $ sort $ filter (/= '.') combined
+    _ <- if length processed /= 2 then Nothing else Just ()
     -- (nonQuestionString, _) <- uncons $ filter (/= "?") processed
     questionPoint <-
         if '?' `elem` combined && 1 == length (filter (== '?') combined)
