@@ -95,14 +95,14 @@ precomputeFor startTime point multiplyer bound mapping = foldr (uncurry M.insert
     -- f = map (uncurry M.singleton) . computeForPower
     f = computeForPower
 
-keepLowerScore :: Int -> Maybe Int -> Maybe Int
-keepLowerScore newScore mScore = Just $ maybe newScore (max newScore) mScore
+keepMin :: Int -> Maybe Int -> Maybe Int
+keepMin newScore mScore = Just $ maybe newScore (min newScore) mScore
 
-unionKeepLower :: PointTimeToScore -> PointTimeToScore -> PointTimeToScore
-unionKeepLower = M.unionWith min
+unionKeepMin :: PointTimeToScore -> PointTimeToScore -> PointTimeToScore
+unionKeepMin = M.unionWith min
 
 precomputeMappingStartingAtTime :: Int -> Int -> PointTimeToScore
-precomputeMappingStartingAtTime bound startTime = a `par` b `par` c `pseq` ((a `unionKeepLower` b) `unionKeepLower` c)
+precomputeMappingStartingAtTime bound startTime = a `par` b `par` c `pseq` ((a `unionKeepMin` b) `unionKeepMin` c)
   where
     a = precomputeFor startTime (0, 0) 1 bound mempty
     b = precomputeFor startTime (0, 1) 2 bound mempty
