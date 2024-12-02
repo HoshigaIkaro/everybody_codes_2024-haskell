@@ -1,18 +1,17 @@
 {-# OPTIONS_GHC -Wno-x-partial #-}
+{-# OPTIONS_GHC -Wunused-top-binds #-}
 
 module Quests.Q12 (run, part1, part2, part3) where
 
 import Control.Applicative (asum)
 import Control.Arrow (Arrow (second), first, (***))
 import Control.Parallel (par, pseq)
-import Control.Parallel.Strategies (parMap, rdeepseq, rpar)
-import Data.Function (on)
+import Control.Parallel.Strategies (parMap, rpar)
 import Data.List
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe (isNothing, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Ord (Down (Down), comparing)
-import Data.Text qualified as T
 
 run :: IO ()
 run = mempty
@@ -26,7 +25,6 @@ canReachFrom (x, y) (tx, ty) power = reachableInCruise || reachableInDescent
     finalSlope = fromIntegral (ty - (y + power)) / fromIntegral (tx - (x + 2 * power))
     reachableInCruise = tx `elem` [x + power .. x + 2 * power] && ty == y + power
     reachableInDescent = finalSlope == -1.0
-
 maxPowerBoundFor :: Point -> Point -> Int
 maxPowerBoundFor (x, y) (tx, _) = (tx + y - x) `div` 2
 
@@ -75,12 +73,7 @@ part2 s = sum $ mapMaybe (tryDestroy processedCatapults) processedTargets
     processedTargets = sortBy (comparing (second Down)) targets
 
 findMaxBound :: [Point] -> Int
-findMaxBound = ((\a -> a - div a 3)) . uncurry max . foldr (\(a, b) (c, d) -> (max a c, max b d)) (0, 0)
-  where
-    -- findMaxBound = succ . flip div 2 . maximum . map fst
-
-    -- f (a, b) (c, d) = (max a c, max b d)
-    g (a, b) = (a - div a 4, b - div b 4)
+findMaxBound = (\a -> a - div a 3) . uncurry max . foldr (\(a, b) (c, d) -> (max a c, max b d)) (0, 0)
 
 trajectoryPoints :: Point -> Int -> [Point]
 trajectoryPoints (x, y) power = ascendingPoints <> cruisePoints <> descendingPoints
@@ -136,28 +129,34 @@ findMatch mapping time point@(x, y) =
     lookupPossibleValues = mapMaybe (`M.lookup` mapping) possiblePointTimes
 
 findMinMatch :: PointTimeToScore -> Point -> Int
-findMinMatch mapping = minimum . mapMaybe (flip M.lookup mapping) . zipWithTimeStep 0 . meteorPoints
+findMinMatch mapping = minimum . mapMaybe (`M.lookup` mapping) . zipWithTimeStep 0 . meteorPoints
+
+pStartPoints :: String -> [Point]
+pStartPoints = mapMaybe (f . map read . words) . lines
+  where
+    f [a, b] = Just (a, b)
+    f _ = Nothing
 
 part3 :: String -> Int
 part3 s = sum $ parMap rpar (findMatch precomputed 0) startPoints
   where
-    f [a, b] = Just (a, b)
-    f _ = Nothing
+    startPoints = pStartPoints s
     bound = findMaxBound startPoints
     precomputed = precomputeMappingAll bound
-    startPoints = mapMaybe (f . map read . words) $ lines s
+
+-- Failed functions
 
 timeToReach :: Point -> Point -> Int -> Int
 timeToReach start target = length . takeWhile (/= target) . trajectoryPoints start
 
 powerToReachFrom :: Point -> Point -> Int -> Maybe Int
-powerToReachFrom start target@(tx, ty) time = case dropWhile ((== False) . snd) maybeReachableList of
+powerToReachFrom start target@(tx, ty) time = case dropWhile (not . snd) maybeReachableList of
     [] -> Nothing
     list -> Just $ fst $ head list
   where
-    powers = [1 .. max tx ty]
+    powers = reverse [1 .. max tx ty]
     distanceWorks = (<= time) . timeToReach start target
-    success = liftA2 (&&) distanceWorks (canReachFrom start target)
+    success = liftA2 (&&) (canReachFrom start target) distanceWorks
     maybeReachableList = map ((,) <*> success) powers
 
 scoreToReach :: Point -> Int -> Maybe Int
@@ -171,9 +170,38 @@ scoreToReach target time = asum [a, b, c]
 solveMeteor :: Point -> Int
 solveMeteor = go 0
   where
+    go _ (_, -1) = -1
     go time point = case scoreToReach point time of
         Just score -> score
         Nothing -> go (succ time) (nextMeteorPoint point)
 
 slope :: Point -> Point -> Double
 slope (x, y) (tx, ty) = fromIntegral (ty - y) / fromIntegral (tx - x)
+
+mDistTo :: Point -> Point -> Maybe Int
+mDistTo start@(x, y) target@(tx, ty)
+    -- Only discrete time steps possible
+    | initialSlope == 1.0 = Just tx
+    | otherwise = Nothing
+  where
+    minPower = 1
+    maxPower = ty - y
+    initialSlope = slope start target
+    finalSlope :: Double
+    finalSlope = slope (x + 2 * maxPower, y + maxPower) target
+    reachableInCruise = tx `elem` [x + maxPower .. x + 2 * maxPower] && ty == y + maxPower
+    reachableInDescent = finalSlope == -1.0
+
+mSolve :: Point -> Point -> Maybe Int
+mSolve start@(x, y) target@(tx, ty)
+    -- Only discrete time steps possible
+    | initialSlope == 1.0 = Just $ succ y * div tx 2
+    | otherwise = Nothing
+  where
+    minPower = 1
+    maxPower = ty - y
+    initialSlope = slope start target
+    finalSlope :: Double
+    finalSlope = slope (x + 2 * maxPower, y + maxPower) target
+    reachableInCruise = tx `elem` [x + maxPower .. x + 2 * maxPower] && ty == y + maxPower
+    reachableInDescent = finalSlope == -1.0
