@@ -77,12 +77,13 @@ library
         Quests.Q10
         Quests.Q11
         Quests.Q12
+        Quests.Q13
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.20.0.0, text, containers, mtl, parallel, deepseq
+    build-depends:    base ^>=4.20.0.0, text, containers, mtl, parallel, deepseq, heaps
 
     -- Directories containing source files.
     hs-source-dirs:   src

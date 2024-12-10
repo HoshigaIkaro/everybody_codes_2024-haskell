@@ -12,9 +12,21 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Ord (Down (Down), comparing)
+import qualified Data.Text as T
 
 run :: IO ()
-run = mempty
+run = do
+    let prefix = "./input/q12"
+        firstInputName = prefix <> "/p1.txt"
+        secondInputName = prefix <> "/p2.txt"
+        thirdInputName = prefix <> "/p3.txt"
+        trim = T.unpack . T.strip . T.pack
+    firstInput <- trim <$> readFile firstInputName
+    secondInput <- trim <$> readFile secondInputName
+    thirdInput <- trim <$> readFile thirdInputName
+    print $ part1 firstInput
+    print $ part2 secondInput
+    print $ part3 thirdInput
 
 type Point = (Int, Int)
 
