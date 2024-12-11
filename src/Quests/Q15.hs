@@ -8,6 +8,7 @@ import Data.Heap qualified as H
 import Data.Ix
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -43,7 +44,7 @@ showBoard b = unlines $ map processRow [0 .. height - 1]
     mapping = bMap b
     width = bWidth b
     height = bHeight b
-    processRow rowNum = map (maybe '#' id . flip M.lookup mapping) [(rowNum, c) | c <- [0 .. width - 1]]
+    processRow rowNum = [fromMaybe '#' (M.lookup (rowNum, c) mapping) | c <- [0 .. width - 1]]
 
 makeBoard :: String -> Board
 makeBoard s =
