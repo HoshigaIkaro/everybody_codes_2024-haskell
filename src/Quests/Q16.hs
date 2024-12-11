@@ -37,17 +37,6 @@ run = do
     print $ part2 secondInput
     print $ part3 thirdInput
 
-padInput :: Text -> Text
-padInput t = T.unlines $ map padLine ls
-  where
-    ls = T.lines t
-    maxWidth = maximum $ map T.length ls
-    padLine l
-        | len /= maxWidth = l <> (T.replicate (maxWidth - len) " ")
-        | otherwise = l
-      where
-        len = T.length l
-
 stripEnds :: Text -> Text
 stripEnds = T.unlines . map T.stripEnd . T.lines
 
@@ -83,11 +72,6 @@ getFacesAtPull n = map f
 part1 :: String -> Text
 part1 = T.unwords . getFacesAtPull 100 . pInput
 
-eyes :: Text -> [Char]
-eyes t = take 1 s <> drop 2 s
-  where
-    s = T.unpack t
-
 frequenciesFromFaces :: [Text] -> Map Char Int
 frequenciesFromFaces = T.foldr f M.empty . T.concat
   where
@@ -116,30 +100,6 @@ part2 s = coinsWonInCycle * numCycles + coinsWonAfterCycle
     pullsAfterCycle = targetPulls `mod` cycleLen
     coinsWonAfterCycle = sum $ map (mapping M.!) [1 .. pullsAfterCycle]
 
-pullRange :: Int -> [Int]
-pullRange rightPulls = range (rightPulls - 1, rightPulls * 2)
-
--- simulate :: [(Int, Map Int Text)] -> (Int, Int)
--- simulate wheels = go [(0, 0, maxBound, 0)] M.empty
---   where
---     initialCoins = map (\(a, b) -> (a, b, byteCoinsWonAtV2 wheels a b)) [(-1, 1), (0, 1), (1, 1)]
---     nextPulls (l, r) = [(l - 1, r + 1), (l, r + 1), (l + 1, r + 1)]
---     go [] _ = (0, 0)
---     go ((leftPull, rightPull, currentMin, currentMax) : xs) cache
---         | rightPull == 1 = (currentMin, currentMax)
---         | otherwise =
---             let newPair = case M.lookup pullPair cache of
---                     Nothing -> (min currentMin newCoin, max currentMax newCoin)
---                     Just cachedPair -> cachedPair
---              in go (xs <> newStates newPair) (M.insert pullPair newPair cache)
---       where
---         pullPair = (leftPull, rightPull)
---         newCoin = byteCoinsWonAtV2 wheels leftPull rightPull
---         possiblePulls = nextPulls pullPair
---         (minPullPair, possibleMin) = minimumBy (compare `on` snd) . map ((,) <$> id <*> (uncurry $ byteCoinsWonAtV2 wheels))
---         (maxPullPair, possibleMax) = minimumBy (compare `on` snd) . map ((,) <$> id <*> (uncurry $ byteCoinsWonAtV2 wheels))
---         newStates (x, y) = map (\(a, b) -> (a, b, x, y)) $ nextPulls pullPair
-
 getFacesAtPullV2 :: Int -> Int -> [(Int, Map Int Text)] -> [Text]
 getFacesAtPullV2 lef n = map f
   where
@@ -163,26 +123,47 @@ findMinPulls wheels = minimum $ go initialHeap
         newCoins :: Int -> (Int, Int) -> Int
         newCoins coins = (coins +) . uncurry (byteCoinsWonAtV2 eyeWheels)
         newPullsForState (H.Entry coins pull) = map (H.Entry <$> (newCoins coins) <*> id) $ newPulls pull
-        newHeap = H.take 20000 $ H.fromList $ nubBy (\a b -> H.payload a == H.payload b) $ concatMap newPullsForState minStates
+        newHeap = H.take 1000 $ H.fromList $ nubBy (\a b -> H.payload a == H.payload b) $ concatMap newPullsForState minStates
 
 findMaxPulls :: [(Int, Map Int Text)] -> Int
-findMaxPulls wheels = maximum $ go initialHeap
+findMaxPulls wheels = maximum $ go initialHeap 0
   where
-    initialHeap = H.singleton (H.Entry 0 (0, 0))
+    initialHeap = H.singleton (H.Entry 0 0)
     eyeWheels = map (second toEyeWheels) wheels
-    go heap
+    go heap r
         | H.null heap = []
-        | 256 == snd (H.payload (H.minimum heap)) = map (negate . H.priority) $ H.toUnsortedList heap
-        | otherwise = go newHeap
+        | 256 == r = map (negate . H.priority) $ H.toUnsortedList heap
+        | otherwise = go newHeap (r + 1)
       where
         minStates = H.toUnsortedList heap
-        newPulls (l, r) = [(l - 1, r + 1), (l, r + 1), (l + 1, r + 1)]
-        newCoins :: Int -> (Int, Int) -> Int
-        newCoins coins = (+ coins) . negate . uncurry (byteCoinsWonAtV2 eyeWheels)
+        newPulls l = [l - 1, l, l + 1]
+        newCoins coins = (+ coins) . negate . flip (byteCoinsWonAtV2 eyeWheels) (r + 1)
         newPullsForState (H.Entry coins pull) = map (H.Entry <$> (newCoins coins) <*> id) $ newPulls pull
-        newHeap = H.take 20000 $ H.fromList $ nubBy (\a b -> H.payload a == H.payload b) $ concatMap newPullsForState minStates
+        newHeap = H.take 200 $ H.fromList $ nubBy (\a b -> H.payload a == H.payload b) $ concatMap newPullsForState minStates
 
--- part3 :: String -> Int
-part3 s = unwords [show (findMaxPulls wheels), show (findMinPulls wheels)]
+findMinMaxPulls :: [(Int, Map Int Text)] -> [Int]
+findMinMaxPulls wheels = go initialHeap initialHeap 0
   where
-    wheels = pInput s
+    initialHeap = H.singleton (H.Entry 0 0)
+    eyeWeheels = map (second toEyeWheels) wheels
+    go maxHeap minHeap r
+        | H.null maxHeap || H.null minHeap = []
+        | r == 256 = [maxCoins, minCoins]
+        | otherwise = go newMaxHeap newMinHeap newR
+      where
+        newR = r + 1
+        newPulls lef = [lef - 1, lef, lef + 1]
+        minStates = H.toUnsortedList minHeap
+        maxStates = H.toUnsortedList maxHeap
+        newCoins f coins = (+ coins) . f . flip (byteCoinsWonAtV2 eyeWeheels) newR
+        newPullsForState f (H.Entry coins pull) = map (H.Entry <$> (newCoins f coins) <*> id) $ newPulls pull
+        newPullsForMinState = newPullsForState id
+        newPullsForMaxState = newPullsForState negate
+        newHeap f = H.take 100 . H.fromList . nubBy (\a b -> H.payload a == H.payload b) . concatMap f
+        newMinHeap = newHeap newPullsForMinState minStates
+        newMaxHeap = newHeap newPullsForMaxState maxStates
+        minCoins = H.priority $ H.minimum minHeap
+        maxCoins = negate . H.priority $ H.minimum maxHeap
+
+part3 :: String -> String
+part3 = unwords . map show . findMinMaxPulls . pInput
