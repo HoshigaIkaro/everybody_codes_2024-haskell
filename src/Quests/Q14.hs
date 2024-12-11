@@ -1,7 +1,7 @@
 module Quests.Q14 (run, part1, part2, part3) where
 
-import Data.Map (Map)
-import Data.Map qualified as M
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as M
 import Data.Maybe (fromJust)
 import Data.Set (Set)
 import Data.Set qualified as S
