@@ -98,71 +98,15 @@ findPathLengthsToFruits b = go [start] S.empty S.empty
 part1 :: String -> Int
 part1 s = sum . map (2 *) . findPathLengthsToFruits $ makeBoard s
 
-distBetween :: Map Point Char -> Point -> Point -> Int
-distBetween mapping start end = go [(start, 0)] S.empty
-  where
-    go [] _ = 0
-    go ((point, dist) : xs) visited
-        | point `S.member` visited = go xs visited
-        | point == end = dist
-        | otherwise = go (xs <> newStates) (S.insert point visited)
-      where
-        newPoints = validAdjacentPoints mapping point
-        newStates = map (,dist + 1) newPoints
-
-distancesFrom :: Board -> Point -> Map Point (Char, Int)
-distancesFrom b start = go [(start, 0)] S.empty M.empty
-  where
-    mapping = bMap b
-    fruitLocations = bFruitLocations b
-    go [] _ distances = distances
-    go ((point, dist) : xs) visited currentDistances
-        | point `S.member` visited = go xs visited currentDistances
-        | all (`M.member` currentDistances) (M.keys fruitLocations) = currentDistances
-        | isAlpha currentChar = go (xs <> newStates) newVisited (M.insert point (currentChar, dist) currentDistances)
-        | otherwise = go (xs <> newStates) newVisited currentDistances
-      where
-        currentChar = mapping M.! point
-        newVisited = S.insert point visited
-        newStates = map (,succ dist) $ validAdjacentPoints mapping point
-
 toVisited :: Char -> Int
 toVisited = (10 ^) . subtract (ord 'A') . ord
-
-shortestCycleAllFruits :: Board -> Map Point (Map Point (Char, Int)) -> Point -> Maybe Int
-shortestCycleAllFruits b allMapping start = go initialHeap S.empty
-  where
-    initialHeap = H.fromList $ map (\(p, (fruit, dist)) -> H.Entry dist (p, toVisited fruit)) (M.toList (allMapping M.! start))
-    fruits = foldr (.|.) 0 $ map toVisited $ S.toList $ bFruits b
-    go heap visited
-        | null heap = Nothing
-        | point == start && visitedFruits == fruits = Just dist
-        | visitedFruits == fruits = go (H.insert (H.Entry (dist + snd (allMapping M.! start M.! point)) (start, visitedFruits)) newHeap) newVisited
-        | state `S.member` visited = go newHeap newVisited
-        | otherwise = go (newHeap <> newStates) newVisited
-      where
-        minState = H.minimum heap
-        dist = H.priority minState
-        state@(point, visitedFruits) = H.payload minState
-        newHeap = H.deleteMin heap
-        newVisited = S.insert state visited
-        f (p, (fruit, d)) = H.Entry (dist + d) (p, toVisited fruit .|. visitedFruits)
-        newStates = H.fromList $ map f $ M.toList $ M.filter ((/= 1) . (visitedFruits .&.) . toVisited . fst) (allMapping M.! point)
 
 part2 :: String -> Int
 part2 s = shortestCycleV2 b start
   where
-    -- part2 s = fromJust $ shortestCycleAllFruits b allDistancesFrom start
-
-    -- part2 s = shortestCycleAllFruits b allDistancesFrom start (3, 3)
-
-    -- part2 s = allDistancesFrom
-
     b = makeBoard s
     mapping = bMap b
     start = head $ filter ((== 0) . fst) $ M.keys mapping
-    allDistancesFromFruits = M.fromList $ map ((,) <$> id <*> distancesFrom b) (M.keys $ bFruitLocations b)
-    allDistancesFrom = M.insert start (distancesFrom b start) allDistancesFromFruits
 
 splitToThreeBoards :: Board -> (Board, Board, Board)
 splitToThreeBoards b = (one, two, three)
@@ -216,31 +160,15 @@ solveRight b = shortestCycleV2 b start
   where
     height = bHeight b
     start = fst . minimum $ filter ((== height - 2) . fst . fst) $ M.toList (bFruitLocations b)
-    allDistancesFromFruits = M.fromList $ map ((,) <$> id <*> distancesFrom b) (M.keys $ bFruitLocations b)
-
--- allDistancesFrom = M.insert start (distancesFrom b start) allDistancesFromFruits
 
 solveMiddle :: Board -> Int
 solveMiddle b = shortestCycleV2 b start
   where
     mapping = bMap b
     start = head $ filter ((== 0) . fst) $ M.keys mapping
-    allDistancesFromFruits = M.fromList $ map ((,) <$> id <*> distancesFrom b) (M.keys $ bFruitLocations b)
-    allDistancesFrom = M.insert start (distancesFrom b start) allDistancesFromFruits
 
--- part3 :: String -> Int
--- part3 s = bFruits three
+part3 :: String -> Int
 part3 s = solveLeft one + solveMiddle two + solveRight three
   where
-    -- part3 s = shortestCycleV2 one (75, 86)
-
-    -- part2 s = shortestCycleAllFruits b allDistancesFrom start (3, 3)
-
-    -- part2 s = allDistancesFrom
-
     b = makeBoard s
-    mapping = bMap b
-    start = head $ filter ((== 0) . fst) $ M.keys mapping
-    -- allDistancesFromFruits = M.fromList $ map ((,) <$> id <*> distancesFrom b) (M.keys $ bFruitLocations b)
-    -- allDistancesFrom = M.insert start (distancesFrom b start) allDistancesFromFruits
     (one, two, three) = splitToThreeBoards b
