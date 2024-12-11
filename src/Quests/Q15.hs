@@ -3,14 +3,11 @@
 module Quests.Q15 (run, part1, part2, part3) where
 
 import Control.Arrow
-import Data.Bits
 import Data.Char (isAlpha, ord)
-import Data.Heap (Heap)
 import Data.Heap qualified as H
 import Data.Ix
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import Data.Maybe
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T

@@ -80,6 +80,7 @@ library
         Quests.Q13
         Quests.Q14
         Quests.Q15
+        Quests.Q16
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
