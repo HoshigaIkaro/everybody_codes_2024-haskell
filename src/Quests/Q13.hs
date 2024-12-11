@@ -3,15 +3,27 @@
 module Quests.Q13 (run, part1, part2, part3) where
 
 import Control.Arrow
-import Data.Char (digitToInt, isDigit)
+import Data.Char (digitToInt)
 import Data.Heap qualified as H
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe
 import Data.Set qualified as S
+import qualified Data.Text as T
 
 run :: IO ()
-run = mempty
+run = do
+    let prefix = "./input/q13"
+        firstInputName = prefix <> "/p1.txt"
+        secondInputName = prefix <> "/p2.txt"
+        thirdInputName = prefix <> "/p3.txt"
+        trim = T.unpack . T.strip . T.pack
+    firstInput <- trim <$> readFile firstInputName
+    secondInput <- trim <$> readFile secondInputName
+    thirdInput <- trim <$> readFile thirdInputName
+    print $ part1 firstInput
+    print $ part2 secondInput
+    print $ part3 thirdInput
 
 type Point = (Int, Int)
 
